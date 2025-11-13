@@ -1,0 +1,32 @@
+/* Modal Stilleri */
+.max-h-90vh {
+    max-height: 90vh;
+}
+
+.fixed {
+    position: fixed;
+}
+
+.inset-0 {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+}
+
+.z-50 {
+    z-index: 50;
+}
+
+.hidden {
+    display: none;
+}
+
+/* Modal içeriği scroll */
+.overflow-y-auto {
+    overflow-y: auto;
+}
+
+.max-h-96 {
+    max-height: 24rem;
+}

@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="tr" class="h-full bg-gray-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Akıllı Öğretmen Defteri</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  
+  <!-- MEVCUT KÜTÜPHANELER -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  
+  <!-- REHBERLİK MODÜLÜ KÜTÜPHANELERİ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  
+  <style>
+    /* MEVCUT CSS KODLARI */
+    body { font-family: 'Inter', sans-serif; }
+    .tab-button { padding: 0.75rem 1.25rem; border-radius: 0.5rem; font-weight: 500; cursor: pointer; transition: all 0.2s ease; color: #4B5563; background-color: transparent; border: 2px solid transparent; }
+    .tab-button.active { color: #3B82F6; background-color: #DBEAFE; border-color: #3B82F6; }
+    .tab-button:hover:not(.active) { background-color: #F3F4F6; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .timer-display { font-family: 'Courier New', monospace; font-size: 2.5rem; font-weight: bold; }
+    .calendar-day { cursor: pointer; transition: all 0.2s ease; }
+    .calendar-day:hover { background-color: #E5E7EB; }
+    .calendar-day.selected { background-color: #3B82F6; color: white; }
+    .notification { 
+      position: fixed; 
+      top: 20px; 
+      right: 20px; 
+      z-index: 1000; 
+      max-width: 400px;
+      animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .student-import-area { 
+      border: 2px dashed #3B82F6; 
+      border-radius: 10px; 
+      padding: 2rem; 
+      text-align: center; 
+      background: #f8faff; 
+      cursor: pointer; 
+      transition: all 0.3s ease; 
+    }
+    .student-import-area:hover { 
+      background: #e0e7ff; 
+    }
+    .countdown-display { 
+      font-size: 4rem; 
+      font-weight: bold; 
+      color: #3B82F6; 
+      text-align: center;
+      margin: 2rem 0;
+    }
+    .winner-display {
+      font-size: 3rem;
+      font-weight: bold;
+      color: #10B981;
+      text-align: center;
+      margin: 1rem 0;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); }
+    }
+    .homework-reminder {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 1rem;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      animation: slideIn 0.5s ease-out;
+    }
+    
+    /* YENİ EKLENEN STİLLER - DÜZELTİLMİŞ */
+    .grade-input {
+      width: 100%;
+      text-align: center;
+      border: 1px solid #d1d5db;
+      border-radius: 5px;
+      padding: 0.5rem;
+      font-size: 0.875rem;
+    }
+    .grade-input:focus {
+      outline: none;
+      border-color: #3B82F6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    .mark-btn {
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-weight: bold;
+      transition: all 0.2s ease;
+      border: none;
+      cursor: pointer;
+    }
+    .plus-btn {
+      background: #dcfce7;
+      border: 2px solid #16a34a;
+      color: #16a34a;
+    }
+    .plus-btn:hover {
+      background: #bbf7d0;
+      transform: scale(1.05);
+    }
+    .minus-btn {
+      background: #fecaca;
+      border: 2px solid #dc2626;
+      color: #dc2626;
+    }
+    .minus-btn:hover {
+      background: #fca5a5;
+      transform: scale(1.05);
+    }
+    
+    /* YENİ EKLENEN NOT SİSTEMİ STİLLERİ */
+    .grade-section {
+      border-left: 4px solid #3B82F6;
+      padding-left: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .grade-section.d1 {
+      border-left-color: #2563eb;
+    }
+    .grade-section.d2 {
+      border-left-color: #059669;
+    }
+    .average-display {
+      font-weight: bold;
+      padding: 0.5rem;
+      border-radius: 0.375rem;
+      text-align: center;
+    }
+    .average-excellent {
+      background-color: #dcfce7;
+      color: #166534;
+    }
+    .average-good {
+      background-color: #dbeafe;
+      color: #1e40af;
+    }
+    .average-average {
+      background-color: #fef3c7;
+      color: #92400e;
+    }
+    .average-poor {
+      background-color: #fecaca;
+      color: #991b1b;
+    }
+
+    /* YENİ YOKLAMA SİSTEMİ STİLLERİ */
+    .student-list-container {
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+
+    .present-btn, .absent-btn {
+      transition: all 0.3s ease;
+    }
+
+    .present-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+    }
+
+    .absent-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
+    /* Scrollbar stilleri */
+    .student-list-container::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .student-list-container::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 4px;
+    }
+
+    .student-list-container::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 4px;
+    }
+
+    .student-list-container::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
+    }
+
+    /* Yoklama animasyonları */
+    @keyframes fadeOut {
+      from {
+        opacity: 1;
+        transform: translateX(0);
+      }
+      to {
+        opacity: 0;
+        transform: translateX(100px);
+      }
+    }
+
+    .fade-out {
+      animation: fadeOut 0.5s ease forwards;
+    }
+
+    /* Yoklama durum renkleri */
+    .bg-present {
+      background-color: #dcfce7;
+      border-color: #16a34a;
+    }
+
+    .bg-absent {
+      background-color: #fecaca;
+      border-color: #dc2626;
+    }
+
+    .bg-waiting {
+      background-color: #fef3c7;
+      border-color: #d97706;
+    }
+
+    /* REHBERLİK MODÜLÜ STİLLERİ */
+    .rehberlik-module {
+      font-family: 'Times New Roman', serif;
+    }
+    
+    .rehberlik-dashboard .grid > div {
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    
+    .rehberlik-dashboard .grid > div:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    /* Toast Notifications */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 10000;
+      max-width: 400px;
+    }
+    .toast {
+      background: white;
+      padding: 15px 20px;
+      margin: 10px 0;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      border-left: 4px solid #3498db;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      transform: translateX(400px);
+      opacity: 0;
+      transition: all 0.3s ease;
+    }
+    .toast.show {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    .toast.success { border-left-color: #27ae60; }
+    .toast.warning { border-left-color: #f39c12; }
+    .toast.danger { border-left-color: #e74c3c; }
+    .toast.info { border-left-color: #3498db; }
+    .toast-icon {
+      font-size: 1.5em;
+      flex-shrink: 0;
+    }
+    .toast-content {
+      flex: 1;
+    }
+    .toast-title {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .toast-message {
+      font-size: 0.9em;
+      color: #666;
+    }
+    .toast-close {
+      background: none;
+      border: none;
+      font-size: 1.2em;
+      cursor: pointer;
+      color: #999;
+      padding: 0;
+      margin: 0;
+    }
+
+    /* Özel Gereksinim Pilleri */
+    .special-needs-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 5px 0;
+    }
+    .pill {
+      background-color: #ecf0f1;
+      color: #34495e;
+      padding: 6px 12px;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 10pt;
+      border: 1px solid #bdc3c7;
+      font-family: Arial, sans-serif;
+    }
+    .pill.selected {
+      background-color: #3498db;
+      color: white;
+      border-color: #2980b9;
+      font-weight: bold;
+    }
+
+    /* BEP Modülü Stilleri */
+    .kazanim-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 12px;
+      margin: 15px 0;
+    }
+    .kazanim-item {
+      border: 2px solid #ddd;
+      padding: 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: white;
+      position: relative;
+    }
+    .kazanim-item:hover {
+      border-color: #3498db;
+      background: #f8f9fa;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .kazanim-item.selected {
+      border-color: #2ecc71;
+      background: #ecf7ee;
+    }
+    .kazanim-code {
+      font-weight: bold;
+      color: #2c3e50;
+      font-size: 11pt;
+      margin-bottom: 8px;
+    }
+    .kazanim-text {
+      font-size: 10.5pt;
+      line-height: 1.4;
+      color: #333;
+    }
+    .unit-header {
+      background: linear-gradient(135deg, #34495e, #2c3e50);
+      color: white;
+      padding: 12px 15px;
+      margin: 25px 0 15px 0;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 13pt;
+    }
+    .selected-count {
+      background: #e74c3c;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      margin-left: 10px;
+      font-weight: bold;
+    }
+
+    /* MEB Tablo Stilleri */
+    .meb-table-container {
+      overflow-x: auto;
+      margin: 20px 0;
+      border: 2px solid #2c3e50;
+      border-radius: 8px;
+    }
+    .meb-table {
+      min-width: 2000px;
+      font-size: 10pt;
+    }
+    .meb-table th {
+      background: #2c3e50;
+      color: white;
+      text-align: center;
+      font-weight: bold;
+      padding: 10px 5px;
+      white-space: nowrap;
+    }
+    .meb-table td {
+      padding: 8px 5px;
+      text-align: center;
+      border: 1px solid #ddd;
+    }
+    /* BEP Modülü Stilleri */
+.kazanim-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 12px;
+    margin: 15px 0;
+}
+
+.kazanim-item {
+    border: 2px solid #ddd;
+    padding: 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: white;
+    position: relative;
+}
+
+.kazanim-item:hover {
+    border-color: #3498db;
+    background: #f8f9fa;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.kazanim-item.selected {
+    border-color: #2ecc71;
+    background: #ecf7ee;
+}
+
+.kazanim-code {
+    font-weight: bold;
+    color: #2c3e50;
+    font-size: 11pt;
+    margin-bottom: 8px;
+}
+
+.kazanim-text {
+    font-size: 10.5pt;
+    line-height: 1.4;
+    color: #333;
+}
+
+.unit-header {
+    background: linear-gradient(135deg, #34495e, #2c3e50);
+    color: white;
+    padding: 12px 15px;
+    margin: 25px 0 15px 0;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 13pt;
+    grid-column: 1 / -1;
+  }
+</style>
+</head>
+<body class="h-full">
+  <div id="app" class="min-h-screen p-4 sm:p-8 bg-gray-100">
+    <!-- ÜST BAŞLIK - GÜNCELLENMİŞ (YENİ BUTON EKLENDİ) -->
+    <header class="mb-6 bg-white p-5 rounded-lg shadow-sm">
+      <div class="flex flex-col sm:flex-row justify-between items-center">
+          <div class="flex items-center space-x-3 mb-4 sm:mb-0 cursor-pointer" onclick="moduleManager.showWelcomeScreen()">
+              <div class="relative">
+                  <div id="logo-container" class="w-12 h-12 bg-blue-600 text-white flex items-center justify-center rounded-lg text-2xl font-bold overflow-hidden">
+                      <img id="custom-logo" src="" alt="Logo" class="hidden w-full h-full object-cover">
+                      <span id="default-logo">📚</span>
+                  </div>
+                  <input type="file" id="logo-upload" accept="image/*" class="hidden" onchange="app.uploadLogo()"
+       aria-label="Logo yükleme" title="Logo dosyası seçin">
+                  <button onclick="event.stopPropagation(); document.getElementById('logo-upload').click()" class="absolute -bottom-1 -right-1 bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-blue-700">+</button>
+              </div>
+              <h1 class="text-3xl font-bold text-gray-800">Akıllı Öğretmen Defteri</h1>
+          </div>
+          <div class="flex flex-wrap justify-center sm:justify-end gap-3" id="module-buttons">
+              <!-- MEVCUT BUTONLAR -->
+              <button onclick="app.createBackup()" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 shadow-sm">💾 Yedek Al</button>
+              <button onclick="app.exportData()" class="bg-gray-700 hover:bg-gray-800 text-white font-medium py-2 px-4 rounded-lg transition duration-200 shadow-sm">📤 Veri Dışa Aktar</button>
+              <button onclick="moduleManager.showModule('calendar')" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 shadow-sm">📅 Takvim</button>
+              <!-- YENİ BUTON -->
+              <button onclick="moduleManager.showModule('dersprogrami')" class="bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200 shadow-sm">📋 Ders Programı</button>
+          </div>
+      </div>
+    </header>
+
+    <!-- BİLDİRİMLER -->
+    <div id="notification-container"></div>
+
+    <!-- TOAST NOTIFICATIONS (Rehberlik Modülü için) -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- MODÜL İÇERİK ALANI -->
+    <main id="module-content">
+      <!-- Ana sayfa veya modül içeriği burada gösterilecek -->
+    </main>
+
+    <!-- MODALLAR -->
+    <div id="modals-container">
+      <!-- Modallar buraya dinamik olarak eklenecek -->
+    </div>
+  </div>
+
+<!-- index.html - YÜKLEME SIRASINI DÜZELT -->
+
+<!-- Yardımcı dosyalar -->
+<script src="./utils/storage.js"></script>
+<script src="./utils/notifications.js"></script>
+<script src="./utils/helpers.js"></script>
+
+<!-- Temel modüller -->
+<script src="./modules/main-module.js"></script>
+<script src="./modules/class-module.js"></script>
+<script src="./modules/homework-module.js"></script>
+<script src="./modules/calendar-module.js"></script>
+<script src="./modules/attendance-module.js"></script>
+<script src="./modules/report-module.js"></script>
+<script src="./modules/user-module.js"></script>
+<script src="./modules/dersprogrami-module.js"></script>
+<script src="./modules/yillikplan-module.js"></script>
+<script src="./modules/rehberlik-module.js"></script>
+<script src="./modules/bep-module.js"></script>
+<script src="./utils/modal.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>
